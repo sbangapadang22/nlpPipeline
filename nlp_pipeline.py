@@ -3,11 +3,16 @@ from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag
 from nltk.stem import WordNetLemmatizer
 from nltk.sentiment import SentimentIntensityAnalyzer
+from nltk import ne_chunk
+from nltk.classify import NaiveBayesClassifier
 
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('wordnet')
 nltk.download('vader_lexicon')
+nltk.download('maxent_ne_chunker')
+nltk.download('words')
+nltk.download('movie_reviews')
 
 def tokenize_text(text):
     return word_tokenize(text)
@@ -25,13 +30,17 @@ def analyze_sentiment(text):
     return sentiment_scores
 
 def named_entity_recognition(tokens):
-    # TODO: function for NER
-    # maybe use NLTK's named entity chunker or other libraries like spaCy for NER
-    return []
+    tagged_tokens = pos_tag(tokens)
+    chunks = ne_chunk(tagged_tokens)
+    named_entities = []
+    for chunk in chunks:
+        if hasattr(chunk, 'label'):
+            named_entities.append((' '.join(c[0] for c in chunk), chunk.label()))
+    return named_entities
 
 def text_classification(text):
     # TODO: function for text classification
-    # maybeuse NLTK's Naive Bayes classifier or other machine learning algorithms for classification
+    # maybe use NLTK's Naive Bayes classifier or other machine learning algorithms for classification
     return []
 
 def process_text(text):
