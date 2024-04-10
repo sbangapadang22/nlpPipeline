@@ -38,10 +38,25 @@ def named_entity_recognition(tokens):
             named_entities.append((' '.join(c[0] for c in chunk), chunk.label()))
     return named_entities
 
+# TODO: replace with own training data + own classification algorithm, using below for learning
 def text_classification(text):
-    # TODO: function for text classification
-    # maybe use NLTK's Naive Bayes classifier or other machine learning algorithms for classification
-    return []
+    positive_reviews = nltk.corpus.movie_reviews.fileids('pos')
+    negative_reviews = nltk.corpus.movie_reviews.fileids('neg')
+
+    feature_set = []
+    for review in positive_reviews:
+        words = nltk.word_tokenize(nltk.corpus.movie_reviews.raw(review))
+        feature_set.append((dict([(word.lower(), True) for word in words]), 'positive'))
+
+    for review in negative_reviews:
+        words = nltk.word_tokenize(nltk.corpus.movie_reviews.raw(review))
+        feature_set.append((dict([(word.lower(), True) for word in words]), 'negative'))
+
+    classifier = NaiveBayesClassifier.train(feature_set)
+    words = nltk.word_tokenize(text.lower())
+    features = dict([(word, True) for word in words])
+    classification = classifier.classify(features)
+    return classification
 
 def process_text(text):
     tokens = tokenize_text(text)
