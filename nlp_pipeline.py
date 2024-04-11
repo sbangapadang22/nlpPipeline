@@ -71,7 +71,19 @@ class NLPPipeline:
     def __init__(self, tasks):
         self.tasks = tasks
 
-    def process(self, text):
+    def process(self, input_data, input_format):
+        if input_format == 'text':
+            text = input_data
+        elif input_format == 'file':
+            text = self.read_file(input_data)
+        elif input_format == 'csv':
+            text = self.read_csv(input_data)
+        elif input_format == 'json':
+            text = self.read_json(input_data)
+        else:
+            raise ValueError(f"Unsupported input format: {input_format}")
+
+        text = self.preprocess_text(text)
         result = {}
         for task_name, task in self.tasks.items():
             if task_name == 'Tokenizer':
