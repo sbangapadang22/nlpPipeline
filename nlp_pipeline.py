@@ -14,68 +14,98 @@ nltk.download('maxent_ne_chunker')
 nltk.download('words')
 nltk.download('movie_reviews')
 
-def tokenize_text(text):
-    return word_tokenize(text)
+class NLPTask:
+    def process(self, text):
+        raise NotImplementedError("Subclasses must implement the process method.")
 
-def pos_tag_text(tokens):
-    return pos_tag(tokens)
+class Tokenizer(NLPTask):
+    def process(self, text):
+        return word_tokenize(text)
 
-def lemmatize_text(tokens):
-    lemmatizer = WordNetLemmatizer()
-    return [lemmatizer.lemmatize(token) for token in tokens]
+class POSTagger(NLPTask):
+    def process(self, tokens):
+        return pos_tag(tokens)
 
-def analyze_sentiment(text):
-    sia = SentimentIntensityAnalyzer()
-    sentiment_scores = sia.polarity_scores(text)
-    return sentiment_scores
+class Lemmatizer(NLPTask):
+    def process(self, tokens):
+        lemmatizer = WordNetLemmatizer()
+        return [lemmatizer.lemmatize(token) for token in tokens]
 
-def named_entity_recognition(tokens):
-    tagged_tokens = pos_tag(tokens)
-    chunks = ne_chunk(tagged_tokens)
-    named_entities = []
-    for chunk in chunks:
-        if hasattr(chunk, 'label'):
-            named_entities.append((' '.join(c[0] for c in chunk), chunk.label()))
-    return named_entities
+class SentimentAnalyzer(NLPTask):
+    def process(self, text):
+        sia = SentimentIntensityAnalyzer()
+        sentiment_scores = sia.polarity_scores(text)
+        return sentiment_scores
 
-# TODO: replace with own training data + own classification algorithm, using below for learning
-def text_classification(text):
-    positive_reviews = nltk.corpus.movie_reviews.fileids('pos')
-    negative_reviews = nltk.corpus.movie_reviews.fileids('neg')
+class NamedEntityRecognizer(NLPTask):
+    def process(self, tokens):
+        tagged_tokens = pos_tag(tokens)
+        chunks = ne_chunk(tagged_tokens)
+        named_entities = []
+        for chunk in chunks:
+            if hasattr(chunk, 'label'):
+                named_entities.append((' '.join(c[0] for c in chunk), chunk.label()))
+        return named_entities
 
-    feature_set = []
-    for review in positive_reviews:
-        words = nltk.word_tokenize(nltk.corpus.movie_reviews.raw(review))
-        feature_set.append((dict([(word.lower(), True) for word in words]), 'positive'))
+class TextClassifier(NLPTask):
+    def process(self, text):
+        positive_reviews = nltk.corpus.movie_reviews.fileids('pos')
+        negative_reviews = nltk.corpus.movie_reviews.fileids('neg')
 
-    for review in negative_reviews:
-        words = nltk.word_tokenize(nltk.corpus.movie_reviews.raw(review))
-        feature_set.append((dict([(word.lower(), True) for word in words]), 'negative'))
+        feature_set = []
+        for review in positive_reviews:
+            words = nltk.word_tokenize(nltk.corpus.movie_reviews.raw(review))
+            feature_set.append((dict([(word.lower(), True) for word in words]), 'positive'))
 
-    classifier = NaiveBayesClassifier.train(feature_set)
-    words = nltk.word_tokenize(text.lower())
-    features = dict([(word, True) for word in words])
-    classification = classifier.classify(features)
-    return classification
+        for review in negative_reviews:
+            words = nltk.word_tokenize(nltk.corpus.movie_reviews.raw(review))
+            feature_set.append((dict([(word.lower(), True) for word in words]), 'negative'))
 
-def process_text(text):
-    tokens = tokenize_text(text)
-    pos_tags = pos_tag_text(tokens)
-    lemmas = lemmatize_text(tokens)
-    sentiment = analyze_sentiment(text)
-    named_entities = named_entity_recognition(tokens)
-    classification = text_classification(text)
+        classifier = NaiveBayesClassifier.train(feature_set)
+        words = nltk.word_tokenize(text.lower())
+        features = dict([(word, True) for word in words])
+        classification = classifier.classify(features)
+        return classification
 
-    return {
-        'tokens': tokens,
-        'pos_tags': pos_tags,
-        'lemmas': lemmas,
-        'sentiment': sentiment,
-        'named_entities': named_entities,
-        'classification': classification
-    }
+class NLPPipeline:
+    def __init__(self, tasks):
+        self.tasks = tasks
+
+    def process(self, text):
+        result = {}
+        for task_name, task in self.tasks.items():
+            if task_name == 'Tokenizer':
+                tokens = task.process(text)
+                result['tokens'] = tokens
+            elif task_name == 'POSTagger':
+                pos_tags = task.process(result['tokens'])
+                result['pos_tags'] = pos_tags
+            elif task_name == 'Lemmatizer':
+                lemmas = task.process(result['tokens'])
+                result['lemmas'] = lemmas
+            elif task_name == 'SentimentAnalyzer':
+                sentiment = task.process(text)
+                result['sentiment'] = sentiment
+            elif task_name == 'NamedEntityRecognizer':
+                named_entities = task.process(result['tokens'])
+                result['named_entities'] = named_entities
+            elif task_name == 'TextClassifier':
+                classification = task.process(text)
+                result['classification'] = classification
+        return result
 
 if __name__ == "__main__":
-    text = "The quick brown fox jumps over the lazy dog. It was a fantastic experience!"
-    result = process_text(text)
+    text = "Apple Inc. is an American multinational technology company headquartered in Cupertino, California. The movie was fantastic and had great acting!"
+
+    pipeline_tasks = {
+        'Tokenizer': Tokenizer(),
+        'POSTagger': POSTagger(),
+        'Lemmatizer': Lemmatizer(),
+        'SentimentAnalyzer': SentimentAnalyzer(),
+        'NamedEntityRecognizer': NamedEntityRecognizer(),
+        'TextClassifier': TextClassifier()
+    }
+
+    pipeline = NLPPipeline(pipeline_tasks)
+    result = pipeline.process(text)
     print(result)
